@@ -175,8 +175,8 @@ function hitUltraTarget(tg) {
   const perfect = ULT.lastPerfect;
   if (tg.kind === 'jet') killJet(tg.obj, 'ULTRA');
   else if (tg.kind === 'drone') killDrone(tg.obj, 'ULTRA');
-  else if (tg.kind === 'power') collectPower(tg.obj, true);
-  else if (tg.kind === 'crystal') collectCrystal(tg.obj, true);
+  else if (tg.kind === 'power' && tg.obj.alive) collectPower(tg.obj, true);
+  else if (tg.kind === 'crystal' && tg.obj.alive) collectCrystal(tg.obj, true);
   award(perfect ? 500 : 250, null, 0);
   AudioSys.hit(ULT.i + 1); FX.burstShapes(tg.pos, 26, [1, 2, 3, 5], 26, perfect ? GOLD : PEACH); FX.shockwave(tg.pos, perfect ? 8 : 5, perfect ? GOLD : PEACH, 0.45);
   FX.screenCrash(perfect ? 3 : 1, [0, 1, 2]); FX.shake(0.25); GAME.hitstop(0.045); haptic(perfect ? 'medium' : 'light');
@@ -362,7 +362,7 @@ function passGate(run, g) {
 }
 
 // ---------- storm ----------
-const STORM_TICK = [3.6, 3.4, 3.0, 2.6, 2.2, 1.8];
+const STORM_TICK = [3.6, 3.4, 3.0, 2.8, 2.5, 2.2];
 function updateStorm(dt, rdt) {
   const ph = STORM_PHASES[ZONE.i];
   if (!GAME.holdStorm) ZONE.t += dt;

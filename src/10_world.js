@@ -89,29 +89,32 @@ const STORM_R0 = 125;
 const STORM_PHASES = [
   { wait: 35, shrink: 15, r: 92 },
   { wait: 22, shrink: 15, r: 68 },
-  { wait: 20, shrink: 12, r: 48 },
-  { wait: 16, shrink: 12, r: 32 },
-  { wait: 14, shrink: 10, r: 20 },
+  { wait: 20, shrink: 12, r: 50 },
+  { wait: 16, shrink: 12, r: 36 },
+  { wait: 14, shrink: 10, r: 25 },
   { wait: 16, final: true }
 ];
 const ZONE = { c: new V3(), r: STORM_R0, nc: new V3(), nr: STORM_PHASES[0].r, fc: new V3(), fr: STORM_R0, i: 0, state: 'wait', t: 0, dur: 35, hold: false };
+// the cloud swirl is evaluated per vertex (cheap on phones); bands and fades per pixel
 const stormMat = new THREE.ShaderMaterial({
-  uniforms: { uTime: U_TIME, uFlash: { value: 0 }, uOutside: { value: 0 } }, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-  vertexShader: STD_VERT,
-  fragmentShader: NOISE_GLSL + `uniform float uTime, uFlash, uOutside; varying vec3 vN,vW,vP; varying vec2 vUv;
+  uniforms: { uTime: U_TIME, uFlash: { value: 0 } }, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+  vertexShader: NOISE_GLSL + `uniform float uTime; varying vec3 vW, vD; varying float vSw;
+  void main(){ vD = normalize(position); vec4 w = modelMatrix*vec4(position,1.0); vW = w.xyz;
+    vSw = fbm(vD*4.0 + vec3(0.0, uTime*0.12, 0.0) + fbm(vD*2.5 - vec3(uTime*0.05))*1.6);
+    gl_Position = projectionMatrix*viewMatrix*w; }`,
+  fragmentShader: `uniform float uTime, uFlash; varying vec3 vW, vD; varying float vSw;
   void main(){
-    vec3 d = normalize(vP);
-    float sw = fbm(d*4.0 + vec3(0.0, uTime*0.12, 0.0) + fbm(d*2.5 - vec3(uTime*0.05))*1.6);
+    float sw = vSw;
     float dist = length(vW - cameraPosition);
     float near = smoothstep(70.0, 4.0, dist);
-    float bands = smoothstep(0.75, 1.0, sin(d.y*90.0 + sw*8.0 - uTime*2.0));
+    float bands = smoothstep(0.75, 1.0, sin(vD.y*90.0 + sw*8.0 - uTime*2.0));
     vec3 col = mix(vec3(0.28,0.07,0.62), vec3(0.95,0.55,1.5), sw*sw*1.4) + vec3(1.2,0.9,1.6)*uFlash*sw;
     float a = 0.035 + near*(0.32 + sw*0.35 + bands*0.12) + uFlash*0.15*sw;
     a *= 0.35 + 0.65*smoothstep(1.5, 6.0, dist);
     gl_FragColor = vec4(col, clamp(a, 0.0, 0.8));
   }`
 });
-const stormWall = new THREE.Mesh(new THREE.SphereGeometry(1, 72, 40), stormMat);
+const stormWall = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 56), stormMat);
 stormWall.renderOrder = 6; stormWall.frustumCulled = false; scene.add(stormWall);
 // next circle: a faint shell, plus a dashed white ring on its silhouette when you are outside it
 const nextZone = new THREE.Group(); scene.add(nextZone);
