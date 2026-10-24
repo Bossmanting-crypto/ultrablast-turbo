@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b22">
+<title>Ultrablast Turbo</title>
+<link rel="stylesheet" href="css/game.css">
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="doodle"></div>
+<canvas id="fx"></canvas>
+
+<!-- ============ HUD ============ -->
+<div id="hud">
+  <div class="h-tl">
+    <div id="score">0</div>
+    <div class="combo"><span id="mult">×1</span><div class="combobar"><b id="comboBar"></b></div></div>
+    <div id="shields"><i></i><i></i><i></i></div>
+  </div>
+  <div class="h-tc">
+    <div id="storm" class="pill"><span id="stormText">STORM IN 0:30</span></div>
+    <div id="circleNo">CIRCLE 1 / 6</div>
+  </div>
+  <div class="h-tr">
+    <button id="pauseBtn" class="icon-btn" aria-label="Pause"><span></span><span></span></button>
+    <canvas id="radar" width="240" height="240" aria-label="Radar"></canvas>
+  </div>
+</div>
+
+<!-- touch controls -->
+<div id="controls">
+  <div id="stickZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
+  <button id="ultraBtn" hidden><span>ULTRA</span></button>
+  <div id="boostBtn" role="button" aria-label="Boost">
+    <div class="ring"></div>
+    <div class="core"><span>BOOST</span><div class="pips"><i></i><i></i><i></i></div></div>
+  </div>
+</div>
+
+<!-- onboarding bubble -->
+<div id="coach" hidden><div id="coachText"></div></div>
+<div id="ghostHand" hidden></div>
+
+<!-- ============ SCREENS ============ -->
+<section class="screen" id="home" hidden>
+  <div class="home-wrap">
+    <h1 class="logo">ULTRABLAST<small>TURBO</small></h1>
+    <p class="tag">Grab crystals. Boost through gold rings. Stay inside the circle while the storm closes in.</p>
+    <button class="btn big" id="playBtn">PLAY</button>
+    <div class="row">
+      <button class="btn ghost" id="howBtn">HOW TO PLAY</button>
+      <button class="btn ghost" id="setBtn">SETTINGS</button>
+    </div>
+    <p id="bestLine"></p>
+  </div>
+</section>
+
+<section class="screen" id="howto" hidden>
+  <div class="cards">
+    <article class="card"><div class="ico ico-steer"></div><h3>STEER</h3><p>Drag on the left side. Up and down climb or dive. Let go and you level out, circling the planet.</p></article>
+    <article class="card"><div class="ico ico-boost"></div><h3>BOOST</h3><p>Hold <b>BOOST</b> to charge up to 3 rings, then let go to blast through them. Boosting into enemies destroys them.</p></article>
+    <article class="card"><div class="ico ico-storm"></div><h3>STORM</h3><p>The safe circle shrinks in stages. The white ring shows the next circle. Outside it you lose shields.</p></article>
+    <article class="card"><div class="ico ico-ultra"></div><h3>ULTRA</h3><p>Crystals, rings and takedowns fill the gold meter. When it is full, tap <b>ULTRA</b> and tap again as each target ring closes.</p></article>
+  </div>
+  <button class="btn" id="howDone">GOT IT</button>
+</section>
+
+<section class="screen" id="settings" hidden>
+  <div class="panel">
+    <h2>SETTINGS</h2>
+    <div class="set">
+      <label for="volMusic">MUSIC</label><input type="range" id="volMusic" min="0" max="100" value="70">
+      <label for="volSfx">EFFECTS</label><input type="range" id="volSfx" min="0" max="100" value="90">
+      <label for="qual">GRAPHICS</label>
+      <select id="qual"><option value="auto">AUTO</option><option value="high">HIGH</option><option value="low">BATTERY SAVER</option></select>
+      <label for="invY">INVERT UP/DOWN</label><input type="checkbox" id="invY">
+      <label for="haptic">VIBRATION</label><input type="checkbox" id="haptic" checked>
+    </div>
+    <button class="btn" id="setDone">DONE</button>
+    <p class="credits">Sound: uisfx (CC0), Kenney (CC0). Music: "Battle Theme A" by cynicmusic (CC0). three.js (MIT). Fonts: Bungee, Chakra Petch (OFL).</p>
+  </div>
+</section>
+
+<section class="screen" id="pause" hidden>
+  <div class="panel">
+    <h2>PAUSED</h2>
+    <button class="btn" id="resumeBtn">RESUME</button>
+    <div class="row"><button class="btn ghost" id="restartBtn">RESTART</button><button class="btn ghost" id="homeBtn">HOME</button></div>
+    <div class="set compact">
+      <label for="volMusic2">MUSIC</label><input type="range" id="volMusic2" min="0" max="100" value="70">
+      <label for="volSfx2">EFFECTS</label><input type="range" id="volSfx2" min="0" max="100" value="90">
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="results" hidden>
+  <div class="panel wide res">
+    <h2 id="resTitle">STORM SURVIVED</h2>
+    <div class="res-a">
+      <div id="stars"><i></i><i></i><i></i></div>
+      <div id="resScore">0</div>
+      <div id="resBest"></div>
+      <ul id="goals" class="goals"></ul>
+    </div>
+    <div class="res-b">
+      <div class="stats">
+        <div><b id="rCrystals">0</b><span>CRYSTALS</span></div>
+        <div><b id="rKills">0</b><span>TAKEDOWNS</span></div>
+        <div><b id="rCombo">0</b><span>BEST COMBO</span></div>
+        <div><b id="rUltra">0</b><span>ULTRAS</span></div>
+      </div>
+      <div class="row"><button class="btn big" id="againBtn">PLAY AGAIN</button><button class="btn ghost" id="resHome">HOME</button></div>
+    </div>
+  </div>
+</section>
+
+<div id="rotate" hidden><div class="phone"></div><p>Turn your phone sideways</p></div>
+<div id="loading"><div class="spin"></div><p>LOADING</p></div>
+
+<script type="module" src="js/game.js"></script>
+</body>
+</html>

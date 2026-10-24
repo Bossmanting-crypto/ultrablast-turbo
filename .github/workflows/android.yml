@@ -1,0 +1,83 @@
+name: Android build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: 1.0.${{ github.run_number }}
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Install
+        run: npm ci
+
+      - name: Build the game and copy it into the Android project
+        run: npm run sync
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk ultrablast-turbo-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ultrablast-turbo-debug-apk
+          path: ultrablast-turbo-debug.apk
+
+      # Signed release builds: only when the four signing secrets are set (see README).
+      - name: Build signed release (APK + AAB)
+        if: ${{ env.HAS_KEYSTORE == 'true' }}
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.keystore"
+          cd android && ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk ../ultrablast-turbo-release.apk
+          cp app/build/outputs/bundle/release/app-release.aab ../ultrablast-turbo-release.aab
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('ultrablast-turbo-release.apk') != '' }}
+        with:
+          name: ultrablast-turbo-release
+          path: |
+            ultrablast-turbo-release.apk
+            ultrablast-turbo-release.aab
+
+      # Tag a commit (git tag v1.0.0 && git push --tags) to publish a GitHub release with the APKs attached.
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ultrablast-turbo-debug.apk
+            ultrablast-turbo-release.apk
+            ultrablast-turbo-release.aab
+          fail_on_unmatched_files: false
